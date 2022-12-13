@@ -20,4 +20,14 @@ typedef struct server_t
 
 } server_t;
 
+typedef struct fighter_t
+{
+    char * name;
+    uint32_t attack;
+    uint32_t dodge;
+    uint32_t luck;
+    int32_t health;
+
+} fighter_t;
+
 #endif

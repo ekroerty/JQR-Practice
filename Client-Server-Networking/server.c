@@ -13,16 +13,26 @@
 
 
 #define PORT 4433
-#define THREAD_COUNT 4
+#define THREAD_COUNT 2
 #define N_FAILURE -1
 
 bool gb_run = true;
-int client_sock_actual;
+int32_t g_client_sock;
 
 void sighandler(int signum)
 {
     printf("\nCaught signal %d. Gracefully exiting...\n", signum);
     gb_run = false;
+}
+
+// this will be where I error check the packet that the client send 
+bool check_packet(char * client_msg)
+{
+    if (client_msg)
+    {
+        return true;
+    }
+    return false;
 }
 
 void handle_connections(void * sock_void)
@@ -33,22 +43,25 @@ void handle_connections(void * sock_void)
     char buffer[1024];
     char from_client[1024];
     char kill[4] = "kill";
-    char rec[8] = "Received";
-    char shut_msg[8] = "Shutdown";
-    char hello_msg[22] = "Hello from the server.";
+    char rec[9] = "Received\0";
+    char shut_msg[9] = "Shutdown\0";
+    char hello_msg[23] = "Hello from the server.\0";
     bool shut = false;
+    int client_kill = 0;
 
 
     // sends a confirmation to the client of the connection
-    
+    memset(buffer, '\0', sizeof(buffer));
     printf("[SERVER MESSAGE] ");
     if (shut)
     {
-        snprintf(buffer, 9, "%s", shut_msg);
+        // strncpy(buffer, shut_msg, 8);
+        snprintf(buffer, 10, "%s", shut_msg);
     }
     else
     {
-        snprintf(buffer, 23, "%s", hello_msg);
+        // strncpy(buffer, hello_msg, 22);
+        snprintf(buffer, 24, "%s", hello_msg);
     }
     printf("%s\n", buffer);
     send(client_sock, buffer, strlen(buffer), 0);
@@ -61,22 +74,32 @@ void handle_connections(void * sock_void)
         {
             break;
         }
-        continue;
     }
 
     // prints client message and sends an ack
+
+    // if client receives no ack, it will print error in sending message
+    // to the command line
     if (gb_run && !shut)
-    {
+    {   
+        if (!check_packet(from_client))
+        {
+            close(client_sock);
+            printf("[ERROR] Received malformed packet from CLIENT %d.\n\n", client_sock);
+            printf("[DISCONNECTED] Connection from CLIENT %d closed.\n\n", client_sock);
+
+        }
         printf("[CLIENT %d] %s", client_sock, from_client);
 
-        if (0 == strncmp(from_client, kill, 4))
+        if (0 == strncmp(from_client, kill, 4) && client_kill)
         {
             printf("Exiting...\n");
             gb_run = false;
         }
 
-        snprintf(buffer, 9, "%s", rec);
-        send(client_sock, buffer, strlen(buffer), 0);   
+        memset(buffer, '\0', sizeof(buffer));
+        snprintf(buffer, 10, "%s", rec);
+        send(client_sock, buffer, strlen(buffer), 0);
     }
 
     //closes client connection immediately
@@ -133,10 +156,9 @@ int main ()
 {
     struct sockaddr_in server_addr, client_addr;
     socklen_t addr_size;
-    int client_sock;
+    int32_t client_sock;
     char * ip = "127.0.0.1";
     int backlog = 5;
-    char shutdown[8] = "shutdown";
 
     server_t server = set_params
     (AF_INET, 0 , SOCK_STREAM, INADDR_ANY, PORT, backlog, server_addr, ip);
@@ -153,35 +175,16 @@ int main ()
         addr_size = sizeof(&client_addr);
         client_sock = accept(server.socket, (struct sockaddr *)&client_addr, &addr_size);
 
-        if (-1 == client_sock)
+        if (0 > client_sock)
         {
             continue;
         }
-        else
-        {
-            client_sock_actual = client_sock;
-        }
 
-        if (!gb_run)
-        {
-            if (-1 != client_sock)
-            {
-                send(client_sock, shutdown, strlen(shutdown), 0);
-                close(client_sock);
-            }
-
-            break;
-        }
-        
-        if (0 > client_sock)
-        {
-            return N_FAILURE;
-        }
-
+        g_client_sock = client_sock; 
         printf("[CONNECTED] New connection from %d\n", client_sock);
 
         //after connection is accepted, then add the job to the thread pool with client socket
-        tpool_add_job(p_tpool, handle_connections, &client_sock_actual, NULL);
+        tpool_add_job(p_tpool, handle_connections, &g_client_sock, NULL);
 
     }
 

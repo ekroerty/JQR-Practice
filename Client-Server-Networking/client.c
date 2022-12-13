@@ -9,7 +9,6 @@
 
 int main()
 {
-
     int sock;
     struct sockaddr_in addr;
     socklen_t addr_size;
