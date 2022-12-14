@@ -22,7 +22,7 @@ typedef struct server_t
 
 typedef struct fighter_t
 {
-    char * name;
+    char name[10];
     uint32_t attack;
     uint32_t dodge;
     uint32_t luck;

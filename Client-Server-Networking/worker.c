@@ -1,12 +1,40 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <string.h>
 #include "./worker.h"
+#include <stdbool.h>
+
+// void populate_arena(fighter_t * p_fighter)
+// {
+//     fighter_t ** pp_fighter = calloc(2, sizeof(fighter_t *));
+//     if (!pp_fighter)
+//     {
+//         return;
+//     }
+    
+//     if (!pp_fighter[0])
+//     {
+//         pp_fighter[0] = p_fighter;
+//     }
+//     else if (!pp_fighter[1])
+//     {
+//         pp_fighter[1] = p_fighter;
+//         decide_winner
+//     }
+//     else
+//     {
+//         return;
+//     }
+
+// }
 
 fighter_t * decide_winner(fighter_t * p_fighter1, fighter_t * p_fighter2)
 {
     srand(time(NULL));
     int round = 0;
+    p_fighter1->health = 100;
+    p_fighter2->health = 100;
     printf("Fighter Stats:\n\n");
     printf("FIGHTER 1\nName: %s | Attack: %d | Dodge: %d | Luck: %d\n",
         p_fighter1->name, p_fighter1->attack, p_fighter1->dodge, p_fighter1->luck);
@@ -73,16 +101,18 @@ int main()
 {
     fighter_t * f1 = calloc(1, sizeof(fighter_t));
     fighter_t * f2 = calloc(1, sizeof(fighter_t));
-    f1->name = "Emma";
+    char emma[4] = "Emma";
+    strncat(f1->name, emma, 4);
     f1->attack = 40;
     f1->dodge = 10;
     f1->luck = 50;
-    f1->health = 100;
-    f2->name = "Matt";
+    // f1->health = 100;
+    char matt[4] = "Matt";
+    strncat(f2->name, matt, 4);
     f2->attack = 70;
     f2->dodge = 10;
     f2->luck = 20;
-    f2->health = 100;
+    // f2->health = 100;
     fighter_t * winner = decide_winner(f1, f2);
     if (!winner)
     {

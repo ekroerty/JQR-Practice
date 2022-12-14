@@ -7,8 +7,9 @@ SIZE = 1024
 FORMAT = "utf-8"
 
 def input_val():
-    name = input("Enter fighter name: ")
+    name = str(input("Enter fighter name: "))
     name_len = str(len(name))
+    # add input validation for name length
 
     attack = int(input("Enter fighter attack stat: "))
     while (attack > 80 or attack < 10):
@@ -19,11 +20,14 @@ def input_val():
         dodge = int(input("Dodge must be between 10 and 80. Try again: "))
 
     luck = 100 - attack - dodge
+    if (luck > 80 or luck < 10):
+        print("Luck must be greater than 10 and less than 80. Try again.")
+        input_val()
+    else:
+        print("Luck stat: {}".format(luck))
 
-    print("Luck stat: {}".format(luck))
-
-    send_data = name_len + name + str(attack) + str(dodge) + str(luck)
-    return send_data
+        send_data = name_len + name + str(attack) + str(dodge) + str(luck)
+        return send_data
 
 def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -46,7 +50,6 @@ def main():
 
         send_data = str(input_val())
 
-    
         # Send data from the client, receive data, and immediately close
         send_data += "\n\0"
         client.send(send_data.encode(FORMAT))

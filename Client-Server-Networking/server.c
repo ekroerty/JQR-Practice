@@ -82,14 +82,50 @@ void handle_connections(void * sock_void)
     // to the command line
     if (gb_run && !shut)
     {   
+
         if (!check_packet(from_client))
         {
             close(client_sock);
             printf("[ERROR] Received malformed packet from CLIENT %d.\n\n", client_sock);
             printf("[DISCONNECTED] Connection from CLIENT %d closed.\n\n", client_sock);
-
         }
+
         printf("[CLIENT %d] %s", client_sock, from_client);
+
+        fighter_t * p_fighter = calloc(1, sizeof(fighter_t));
+
+        char name_len_char = from_client[0];
+
+        int name_len = (int)strtol(&name_len_char, (char **)NULL, 10);
+        char client_char;
+
+        for (int iter = 1; iter < (name_len + 1); iter++)
+        {
+            client_char = from_client[iter];
+            strncat(p_fighter->name, &client_char, 1);
+        }
+
+        printf("Name: %s\n", p_fighter->name);
+
+        int start = (name_len + 1);
+        char * attack_str = calloc(2, sizeof(char));
+        char * dodge_str = calloc(2, sizeof(char));
+        char * luck_str = calloc(2, sizeof(char));
+
+        strncat(attack_str, &from_client[start], 2);
+        strncat(dodge_str, &from_client[start+2], 2);
+        strncat(luck_str, &from_client[start+4], 2);
+
+        p_fighter->attack = (uint32_t)strtol(attack_str, (char **)NULL, 10);
+        p_fighter->dodge = (uint32_t)strtol(dodge_str, (char **)NULL, 10);
+        p_fighter->luck = (uint32_t)strtol(luck_str, (char **)NULL, 10);
+
+        free(attack_str);
+        free(dodge_str);
+        free(luck_str);
+
+        printf("Attack: %d | Dodge: %d | Luck: %d \n", p_fighter->attack, p_fighter->dodge, p_fighter->luck);
+
 
         if (0 == strncmp(from_client, kill, 4) && client_kill)
         {
