@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <fcntl.h>
 #include "./CSD-D-JQR-Project-6-thread-pool/module_1/include/tpool.h"
+#include "./CSD-D-JQR-Project-6-thread-pool/module_1/include/free.h"
 #include "./server.h"
 #include "./worker.h"
 
@@ -20,13 +21,12 @@
 void data_free(void * p_data_void)
 {
     fight_data_t * p_data = (fight_data_t *)p_data_void;
-    free(p_data->pp_fighter[0]);
-    free(p_data->pp_fighter[1]);
-    free(p_data->pp_fighter);
+    FREE(p_data->pp_fighter[0]);
+    FREE(p_data->pp_fighter[1]);
+    FREE(p_data->pp_fighter);
     p_data->client_fds[0] = 0;
     p_data->client_fds[1] = 0;
-    free(p_data->client_fds);
-    free(p_data);
+    FREE(p_data->client_fds);
 }
 
 bool gb_run = true;
@@ -246,12 +246,17 @@ int main ()
        
     }
 
-    // data_free(p_data);
-    free(pp_fighters[0]);
-    free(pp_fighters[1]);
-    free(pp_fighters);
-    free(client_socks);
-    free(p_data);
+    if (pp_fighters[0])
+    {
+        FREE(pp_fighters[0]);
+    }
+    if (pp_fighters[1])
+    {
+        FREE(pp_fighters[1]);
+    }
+    FREE(pp_fighters);
+    FREE(client_socks);
+    FREE(p_data);
     tpool_destroy(&p_tpool);
     return 0;
 }
