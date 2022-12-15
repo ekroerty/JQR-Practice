@@ -3,7 +3,7 @@
 
 #include "./server.h"
 
-fighter_t * decide_winner(fighter_t *, fighter_t *);
+void decide_winner(void *);
 
 
 #endif

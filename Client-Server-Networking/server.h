@@ -23,11 +23,18 @@ typedef struct server_t
 typedef struct fighter_t
 {
     char name[10];
-    uint32_t attack;
-    uint32_t dodge;
-    uint32_t luck;
+    uint8_t attack;
+    uint8_t dodge;
+    uint8_t luck;
     int32_t health;
 
 } fighter_t;
+
+
+typedef struct fight_data_t
+{
+    fighter_t ** pp_fighter;
+    int32_t *    client_fds;
+} fight_data_t;
 
 #endif

@@ -8,6 +8,9 @@ FORMAT = "utf-8"
 
 def input_val():
     name = str(input("Enter fighter name: "))
+    while (len(name) >= 10):
+        name = str(input("Name must be less than 10 characters. Try again: "))
+
     name_len = str(len(name))
     # add input validation for name length
 
@@ -22,7 +25,8 @@ def input_val():
     luck = 100 - attack - dodge
     if (luck > 80 or luck < 10):
         print("Luck must be greater than 10 and less than 80. Try again.")
-        input_val()
+        return input_val()
+
     else:
         print("Luck stat: {}".format(luck))
 
@@ -53,10 +57,12 @@ def main():
         # Send data from the client, receive data, and immediately close
         send_data += "\n\0"
         client.send(send_data.encode(FORMAT))
-        recv_ack = client.recv(SIZE).decode(FORMAT).strip()[:8]
+        recv = client.recv(SIZE).decode(FORMAT)
 
-        if (recv_ack != "Received"):
-            print("[ERROR] Failed to send data to server.")
+        print("[RESULTS] The winner is {}!".format(recv))
+
+        # if (recv_ack != "Received"):
+        #     print("[ERROR] Failed to send data to server.")
         
         client.close()
         print("[DISCONNECTED] Disconnected from the server.")

@@ -3,38 +3,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include "./worker.h"
+#include "./server.h"
 #include <stdbool.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
-// void populate_arena(fighter_t * p_fighter)
-// {
-//     fighter_t ** pp_fighter = calloc(2, sizeof(fighter_t *));
-//     if (!pp_fighter)
-//     {
-//         return;
-//     }
-    
-//     if (!pp_fighter[0])
-//     {
-//         pp_fighter[0] = p_fighter;
-//     }
-//     else if (!pp_fighter[1])
-//     {
-//         pp_fighter[1] = p_fighter;
-//         decide_winner
-//     }
-//     else
-//     {
-//         return;
-//     }
-
-// }
-
-fighter_t * decide_winner(fighter_t * p_fighter1, fighter_t * p_fighter2)
+void decide_winner(void * p_data_void)
 {
+    fight_data_t * p_data = (fight_data_t *)p_data_void;
+    fighter_t ** pp_fighters = p_data->pp_fighter;
+    fighter_t * p_fighter1 = pp_fighters[0];
+    fighter_t * p_fighter2 = pp_fighters[1];
+
     srand(time(NULL));
     int round = 0;
     p_fighter1->health = 100;
     p_fighter2->health = 100;
+    printf("\n----------------------------BEGIN FIGHT----------------------------\n");
     printf("Fighter Stats:\n\n");
     printf("FIGHTER 1\nName: %s | Attack: %d | Dodge: %d | Luck: %d\n",
         p_fighter1->name, p_fighter1->attack, p_fighter1->dodge, p_fighter1->luck);
@@ -93,10 +80,35 @@ fighter_t * decide_winner(fighter_t * p_fighter1, fighter_t * p_fighter2)
     {
         winner = NULL;
     }
+    printf("-----------------------------END FIGHT-----------------------------\n\n");
+    
+    char buffer[1024];
+    char tie[4] = "TIE!";
+    int32_t name_len;
 
-    return winner;
+    memset(buffer, '\0', sizeof(buffer));
+    if (!winner)
+    {
+        name_len = 4;
+        snprintf(buffer, name_len+1, "%s", tie);
+    }
+    else
+    {
+        name_len = strnlen(winner->name, 10);
+        snprintf(buffer, name_len+1, "%s", winner->name);
+
+    }
+
+    send(p_data->client_fds[0], buffer, name_len, 0);
+    send(p_data->client_fds[1], buffer, name_len, 0);
+    close(p_data->client_fds[0]);
+    printf("[DISCONNECTED] Connection from CLIENT %d closed.\n\n", p_data->client_fds[0]);
+    close(p_data->client_fds[1]);
+    printf("[DISCONNECTED] Connection from CLIENT %d closed.\n\n", p_data->client_fds[1]);
+
 }
 
+#if 0
 int main()
 {
     fighter_t * f1 = calloc(1, sizeof(fighter_t));
@@ -125,3 +137,4 @@ int main()
     free(f1);
     free(f2);
 }
+#endif

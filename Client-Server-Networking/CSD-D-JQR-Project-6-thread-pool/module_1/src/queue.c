@@ -112,10 +112,10 @@ queue_dequeue (queue_t * p_queue)
     p_queue->p_head = p_queue->p_head->p_next;
     p_queue->size--;
 
-    if (p_temp->free_f)
-    {
-        p_temp->free_f(p_temp->p_data);
-    }
+    // if (p_temp->free_f)
+    // {
+    //     p_temp->free_f(p_temp->p_data);
+    // }
 
     FREE(p_temp);
     return p_val;

@@ -10,14 +10,26 @@
 #include <fcntl.h>
 #include "./CSD-D-JQR-Project-6-thread-pool/module_1/include/tpool.h"
 #include "./server.h"
+#include "./worker.h"
 
 
 #define PORT 4433
 #define THREAD_COUNT 2
 #define N_FAILURE -1
 
+void data_free(void * p_data_void)
+{
+    fight_data_t * p_data = (fight_data_t *)p_data_void;
+    free(p_data->pp_fighter[0]);
+    free(p_data->pp_fighter[1]);
+    free(p_data->pp_fighter);
+    p_data->client_fds[0] = 0;
+    p_data->client_fds[1] = 0;
+    free(p_data->client_fds);
+    free(p_data);
+}
+
 bool gb_run = true;
-int32_t g_client_sock;
 
 void sighandler(int signum)
 {
@@ -35,34 +47,27 @@ bool check_packet(char * client_msg)
     return false;
 }
 
-void handle_connections(void * sock_void)
+fighter_t * handle_connections(void * sock_void)
 {
     int client_sock = *(int *)sock_void;
     socklen_t addr_size;
     struct sockaddr_in client_addr;
     char buffer[1024];
     char from_client[1024];
-    char kill[4] = "kill";
-    char rec[9] = "Received\0";
-    char shut_msg[9] = "Shutdown\0";
+    // char kill[4] = "kill";
+    // char rec[9] = "Received\0";
+    // char shut_msg[9] = "Shutdown\0";
     char hello_msg[23] = "Hello from the server.\0";
     bool shut = false;
     int client_kill = 0;
-
+    fighter_t * p_fighter;
 
     // sends a confirmation to the client of the connection
     memset(buffer, '\0', sizeof(buffer));
+
     printf("[SERVER MESSAGE] ");
-    if (shut)
-    {
-        // strncpy(buffer, shut_msg, 8);
-        snprintf(buffer, 10, "%s", shut_msg);
-    }
-    else
-    {
-        // strncpy(buffer, hello_msg, 22);
-        snprintf(buffer, 24, "%s", hello_msg);
-    }
+    snprintf(buffer, 24, "%s", hello_msg);
+
     printf("%s\n", buffer);
     send(client_sock, buffer, strlen(buffer), 0);
     
@@ -80,7 +85,7 @@ void handle_connections(void * sock_void)
 
     // if client receives no ack, it will print error in sending message
     // to the command line
-    if (gb_run && !shut)
+    if (gb_run)
     {   
 
         if (!check_packet(from_client))
@@ -92,11 +97,13 @@ void handle_connections(void * sock_void)
 
         printf("[CLIENT %d] %s", client_sock, from_client);
 
-        fighter_t * p_fighter = calloc(1, sizeof(fighter_t));
+        p_fighter = calloc(1, sizeof(fighter_t));
 
-        char name_len_char = from_client[0];
+        char len_str = (from_client[0]);
 
-        int name_len = (int)strtol(&name_len_char, (char **)NULL, 10);
+        int name_len = len_str - '0';
+        printf("Name length: %d\n", name_len);
+
         char client_char;
 
         for (int iter = 1; iter < (name_len + 1); iter++)
@@ -108,17 +115,17 @@ void handle_connections(void * sock_void)
         printf("Name: %s\n", p_fighter->name);
 
         int start = (name_len + 1);
-        char * attack_str = calloc(2, sizeof(char));
-        char * dodge_str = calloc(2, sizeof(char));
-        char * luck_str = calloc(2, sizeof(char));
+        char * attack_str = calloc(3, sizeof(char));
+        char * dodge_str = calloc(3, sizeof(char));
+        char * luck_str = calloc(3, sizeof(char));
 
         strncat(attack_str, &from_client[start], 2);
         strncat(dodge_str, &from_client[start+2], 2);
         strncat(luck_str, &from_client[start+4], 2);
 
-        p_fighter->attack = (uint32_t)strtol(attack_str, (char **)NULL, 10);
-        p_fighter->dodge = (uint32_t)strtol(dodge_str, (char **)NULL, 10);
-        p_fighter->luck = (uint32_t)strtol(luck_str, (char **)NULL, 10);
+        p_fighter->attack = (uint8_t)strtoul(attack_str, (char **)NULL, 10);
+        p_fighter->dodge = (uint8_t)strtoul(dodge_str, (char **)NULL, 10);
+        p_fighter->luck = (uint8_t)strtoul(luck_str, (char **)NULL, 10);
 
         free(attack_str);
         free(dodge_str);
@@ -126,21 +133,12 @@ void handle_connections(void * sock_void)
 
         printf("Attack: %d | Dodge: %d | Luck: %d \n", p_fighter->attack, p_fighter->dodge, p_fighter->luck);
 
-
-        if (0 == strncmp(from_client, kill, 4) && client_kill)
-        {
-            printf("Exiting...\n");
-            gb_run = false;
-        }
-
         memset(buffer, '\0', sizeof(buffer));
-        snprintf(buffer, 10, "%s", rec);
-        send(client_sock, buffer, strlen(buffer), 0);
+
+        return p_fighter;
     }
 
-    //closes client connection immediately
-    close(client_sock);
-    printf("[DISCONNECTED] Connection from CLIENT %d closed.\n\n", client_sock);
+    return NULL;
 }
 
 server_t set_params(int32_t domain, int32_t protocol, int32_t service, 
@@ -195,6 +193,12 @@ int main ()
     int32_t client_sock;
     char * ip = "127.0.0.1";
     int backlog = 5;
+    char buffer[1024];
+    char from_client[1024];
+    char win_msg[1024];
+    fighter_t ** pp_fighters = calloc(2, sizeof(fighter_t *));
+    int32_t * client_socks = calloc(2, sizeof(int32_t));
+    fight_data_t * p_data = NULL;
 
     server_t server = set_params
     (AF_INET, 0 , SOCK_STREAM, INADDR_ANY, PORT, backlog, server_addr, ip);
@@ -210,20 +214,44 @@ int main ()
     {
         addr_size = sizeof(&client_addr);
         client_sock = accept(server.socket, (struct sockaddr *)&client_addr, &addr_size);
-
+        
         if (0 > client_sock)
         {
             continue;
         }
 
-        g_client_sock = client_sock; 
         printf("[CONNECTED] New connection from %d\n", client_sock);
 
-        //after connection is accepted, then add the job to the thread pool with client socket
-        tpool_add_job(p_tpool, handle_connections, &g_client_sock, NULL);
+        if (!pp_fighters[0])
+        {
+            pp_fighters[0] = handle_connections(&client_sock);
+            client_socks[0] = client_sock;
+            continue;
+        }
+        else if (!pp_fighters[1])
+        {
+            pp_fighters[1] = handle_connections(&client_sock);
+            client_socks[1] = client_sock;
+        }
 
+        p_data = calloc(1, sizeof(fight_data_t));
+
+        p_data->pp_fighter = pp_fighters;
+        p_data->client_fds = client_socks;
+
+        tpool_add_job(p_tpool, decide_winner, p_data, data_free);
+
+        pp_fighters = calloc(2, sizeof(fighter_t *));
+        client_socks = calloc(2, sizeof(int32_t));
+       
     }
 
+    // data_free(p_data);
+    free(pp_fighters[0]);
+    free(pp_fighters[1]);
+    free(pp_fighters);
+    free(client_socks);
+    free(p_data);
     tpool_destroy(&p_tpool);
     return 0;
 }
