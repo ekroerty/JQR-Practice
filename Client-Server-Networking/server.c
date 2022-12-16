@@ -17,6 +17,7 @@
 #define PORT 4433
 #define THREAD_COUNT 2
 #define N_FAILURE -1
+bool gb_run = true;
 
 void data_free(void * p_data_void)
 {
@@ -29,7 +30,6 @@ void data_free(void * p_data_void)
     FREE(p_data->client_fds);
 }
 
-bool gb_run = true;
 
 void sighandler(int signum)
 {
@@ -54,13 +54,10 @@ fighter_t * handle_connections(void * sock_void)
     struct sockaddr_in client_addr;
     char buffer[1024];
     char from_client[1024];
-    // char kill[4] = "kill";
-    // char rec[9] = "Received\0";
-    // char shut_msg[9] = "Shutdown\0";
     char hello_msg[23] = "Hello from the server.\0";
     bool shut = false;
     int client_kill = 0;
-    fighter_t * p_fighter;
+    fighter_t * p_fighter = NULL;
 
     // sends a confirmation to the client of the connection
     memset(buffer, '\0', sizeof(buffer));
@@ -70,6 +67,8 @@ fighter_t * handle_connections(void * sock_void)
 
     printf("%s\n", buffer);
     send(client_sock, buffer, strlen(buffer), 0);
+
+    printf("[WAITING] Waiting for fighter information...\n\n");
     
     // receives data from the client
     memset(from_client, '\0', sizeof(from_client));
@@ -82,27 +81,26 @@ fighter_t * handle_connections(void * sock_void)
     }
 
     // prints client message and sends an ack
-
     // if client receives no ack, it will print error in sending message
     // to the command line
     if (gb_run)
     {   
-
-        if (!check_packet(from_client))
+        // printf("Blank from client: %s\n", from_client);
+        if (!check_packet(from_client) || !*from_client)
         {
             close(client_sock);
-            printf("[ERROR] Received malformed packet from CLIENT %d.\n\n", client_sock);
+            printf("[ERROR] Received malformed packet from CLIENT %d.\n", client_sock);
             printf("[DISCONNECTED] Connection from CLIENT %d closed.\n\n", client_sock);
+            return NULL;
         }
 
-        printf("[CLIENT %d] %s", client_sock, from_client);
 
         p_fighter = calloc(1, sizeof(fighter_t));
 
         char len_str = (from_client[0]);
 
         int name_len = len_str - '0';
-        printf("Name length: %d\n", name_len);
+        // printf("Name length: %d\n", name_len);
 
         char client_char;
 
@@ -112,7 +110,7 @@ fighter_t * handle_connections(void * sock_void)
             strncat(p_fighter->name, &client_char, 1);
         }
 
-        printf("Name: %s\n", p_fighter->name);
+        // printf("Name: %s\n", p_fighter->name);
 
         int start = (name_len + 1);
         char * attack_str = calloc(3, sizeof(char));
@@ -131,7 +129,9 @@ fighter_t * handle_connections(void * sock_void)
         free(dodge_str);
         free(luck_str);
 
-        printf("Attack: %d | Dodge: %d | Luck: %d \n", p_fighter->attack, p_fighter->dodge, p_fighter->luck);
+        printf("[CLIENT %d] Name: %s | Attack: %d | Dodge: %d | Luck: %d \n", 
+        client_sock, p_fighter->name, p_fighter->attack, p_fighter->dodge, p_fighter->luck);
+        // printf("Attack: %d | Dodge: %d | Luck: %d \n", p_fighter->attack, p_fighter->dodge, p_fighter->luck);
 
         memset(buffer, '\0', sizeof(buffer));
 
@@ -226,11 +226,16 @@ int main ()
         {
             pp_fighters[0] = handle_connections(&client_sock);
             client_socks[0] = client_sock;
+            printf("[WAITING] Waiting for another fighter...\n\n");
             continue;
         }
         else if (!pp_fighters[1])
         {
             pp_fighters[1] = handle_connections(&client_sock);
+            if (!pp_fighters[1])
+            {
+                continue;
+            }
             client_socks[1] = client_sock;
         }
 

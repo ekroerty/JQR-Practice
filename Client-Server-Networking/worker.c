@@ -80,6 +80,15 @@ void decide_winner(void * p_data_void)
     {
         winner = NULL;
     }
+
+    if (winner)
+    {
+        printf("WINNER: %s!\n", winner->name);
+    }
+    else
+    {
+        printf("TIE!\n");
+    }
     printf("-----------------------------END FIGHT-----------------------------\n\n");
     
     char buffer[1024];
@@ -102,7 +111,7 @@ void decide_winner(void * p_data_void)
     send(p_data->client_fds[0], buffer, name_len, 0);
     send(p_data->client_fds[1], buffer, name_len, 0);
     close(p_data->client_fds[0]);
-    printf("[DISCONNECTED] Connection from CLIENT %d closed.\n\n", p_data->client_fds[0]);
+    printf("[DISCONNECTED] Connection from CLIENT %d closed.\n", p_data->client_fds[0]);
     close(p_data->client_fds[1]);
     printf("[DISCONNECTED] Connection from CLIENT %d closed.\n\n", p_data->client_fds[1]);
 
