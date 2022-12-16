@@ -187,7 +187,7 @@ server_t set_params(int32_t domain, int32_t protocol, int32_t service,
     return server;
 }
 
-int main ()
+int main (int argc, char ** argv)
 {
     struct sockaddr_in server_addr, client_addr;
     socklen_t addr_size;
@@ -203,9 +203,12 @@ int main ()
     int32_t * client_socks = calloc(2, sizeof(int32_t));
     fight_data_t * p_data = calloc(1, sizeof(fight_data_t));
     FILE * p_file;
-    p_file = fopen(MYFILE, "w");
+    p_file = fopen("log_file.txt", "w");
     time_t rawtime = time(NULL);
     struct tm * p_tm = localtime(&rawtime);
+    struct timeval tv;
+    tv.tv_sec = 60;
+    tv.tv_usec = 0;
 
     file_t * p_file_type = calloc(1, sizeof(file_t));
     p_file_type->p_tm = p_tm;
@@ -234,13 +237,14 @@ int main ()
         {
             continue;
         }
+
+        p_tm = localtime(&rawtime);
+        snprintf(timestamp, 20, "%d%d%d %02d:%02d:%02d", 
+        (1900 + p_tm->tm_year), (p_tm->tm_mon + 1), p_tm->tm_mday, p_tm->tm_hour, p_tm->tm_min, p_tm->tm_sec);
         p_file_type->status = "Success";
         printf("[CONNECTED] New connection from %d\n", client_sock);
 
         // snprintf(outbuffer, 100, "%s %s %s:%d %s", timestamp, type, ip, PORT, status);
-        p_tm = localtime(&rawtime);
-        snprintf(timestamp, 20, "%d%d%d %02d:%02d:%02d", 
-        (1900 + p_tm->tm_year), (p_tm->tm_mon + 1), p_tm->tm_mday, p_tm->tm_hour, p_tm->tm_min, p_tm->tm_sec);
 
         // printf("Current time: %s\n", timestamp);
         snprintf(outbuffer, sizeof(outbuffer), "%s %s %s:%d %s\n", timestamp,
@@ -253,10 +257,15 @@ int main ()
             pp_fighters[0] = handle_connections(&client_sock);
             client_socks[0] = client_sock;
             printf("[WAITING] Waiting for another fighter...\n\n");
+             //this doesn't work yet//
+            tv.tv_sec = 5;
+            setsockopt(server.socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+            /////////////////////////
             continue;
         }
         else if (!pp_fighters[1])
         {
+           
             pp_fighters[1] = handle_connections(&client_sock);
             if (!pp_fighters[1])
             {

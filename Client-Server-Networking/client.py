@@ -31,7 +31,7 @@ def input_val():
         print("Luck stat: {}".format(luck))
 
         send_data = name_len + name + str(attack) + str(dodge) + str(luck)
-        return send_data
+        return (name, send_data)
 
 def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -52,17 +52,33 @@ def main():
     else:    
         print("[SERVER] {}".format(recv_data))
 
-        send_data = str(input_val())
+        (name, send_data) = input_val()
 
         # Send data from the client, receive data, and immediately close
         send_data += "\n\0"
         client.send(send_data.encode(FORMAT))
         recv = client.recv(SIZE).decode(FORMAT)
+        if (recv[:4] == "TIE!"):
+            (tie, winner, loser) = recv.split()
+            if (name == winner):
+                print("[MATCHUP] {} vs. {}".format(name, loser))
+                print("[RESULTS] {} and {} TIED!".format(name, loser))
+            elif (name == loser):
+                print("[MATCHUP] {} vs. {}".format(name, winner))
+                print("[RESULTS] {} and {} TIED!".format(name, winner))
+        else:
+            (winner, loser) = recv.split()
 
-        print("[RESULTS] The winner is {}!".format(recv))
+        if (bool(recv)):
+            if (name == winner):
+                print("[MATCHUP] {} vs. {}".format(name, loser))
+            elif (name == loser):
+                print("[MATCHUP] {} vs. {}".format(name, winner))
 
-        # if (recv_ack != "Received"):
-        #     print("[ERROR] Failed to send data to server.")
+            print("[RESULTS] The winner is {}!".format(winner))
+        else:
+            print("Unable to enter battle.")
+
         
         client.close()
         print("[DISCONNECTED] Disconnected from the server.")

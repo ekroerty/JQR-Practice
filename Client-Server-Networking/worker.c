@@ -74,13 +74,16 @@ void decide_winner(void * p_data_void)
     }
 
     fighter_t * winner = NULL;
+    fighter_t * loser = NULL;
     if (p_fighter1->health > p_fighter2->health)
     {
         winner = p_fighter1;
+        loser = p_fighter2;
     }
     else if (p_fighter1->health < p_fighter2->health)
     {
         winner = p_fighter2;
+        loser = p_fighter1;
     }
     else
     {
@@ -93,6 +96,8 @@ void decide_winner(void * p_data_void)
     }
     else
     {
+        winner = p_fighter1;
+        loser = p_fighter2;
         printf("TIE!\n");
     }
     printf("-----------------------------END FIGHT-----------------------------\n\n");
@@ -113,15 +118,15 @@ void decide_winner(void * p_data_void)
     if (!winner)
     {
         name_len = 4;
-        snprintf(buffer, name_len+1, "%s", tie);
+        snprintf(buffer, name_len+1, "%s %s %s", tie, winner->name, loser->name);
     }
     else
     {
-        name_len = strnlen(winner->name, 10);
-        snprintf(buffer, name_len+1, "%s", winner->name);
-
+        name_len = strnlen(winner->name, 10) + strnlen(loser->name, 10) + 1;
+        snprintf(buffer, name_len + 1, "%s %s", winner->name, loser->name);
     }
 
+    // printf("Buffer: %s\n", buffer);
     send(p_data->client_fds[0], buffer, name_len, 0);
     send(p_data->client_fds[1], buffer, name_len, 0);
     
