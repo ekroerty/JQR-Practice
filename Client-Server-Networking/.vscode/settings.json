@@ -1,0 +1,11 @@
+{
+    "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
+        "clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling"
+    ],
+    "C_Cpp.codeAnalysis.runAutomatically": true,
+    "files.associations": {
+        "socket.h": "c",
+        "inet.h": "c",
+        "in.h": "c"
+    },
+}

@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 typedef struct server_t 
 {
@@ -30,11 +31,21 @@ typedef struct fighter_t
 
 } fighter_t;
 
+typedef struct file_t 
+{
+    FILE * file;
+    char * type;
+    char * ip;
+    int port;
+    char * status;
+    struct tm * p_tm;
+} file_t;
 
 typedef struct fight_data_t
 {
     fighter_t ** pp_fighter;
     int32_t *    client_fds;
+    file_t *     p_file_struct;
 } fight_data_t;
 
 #endif

@@ -13,7 +13,7 @@
 #include "./server.h"
 #include "./worker.h"
 
-
+#define MYFILE "log_file.txt"
 #define PORT 4433
 #define THREAD_COUNT 2
 #define N_FAILURE -1
@@ -28,6 +28,7 @@ void data_free(void * p_data_void)
     p_data->client_fds[0] = 0;
     p_data->client_fds[1] = 0;
     FREE(p_data->client_fds);
+    // FREE(p_data->p_file_struct);
 }
 
 
@@ -191,14 +192,26 @@ int main ()
     struct sockaddr_in server_addr, client_addr;
     socklen_t addr_size;
     int32_t client_sock;
-    char * ip = "127.0.0.1";
+    char * ip = "10.30.143.25";
     int backlog = 5;
     char buffer[1024];
+    char outbuffer[1024];
+    char timestamp[20];
     char from_client[1024];
     char win_msg[1024];
     fighter_t ** pp_fighters = calloc(2, sizeof(fighter_t *));
     int32_t * client_socks = calloc(2, sizeof(int32_t));
-    fight_data_t * p_data = NULL;
+    fight_data_t * p_data = calloc(1, sizeof(fight_data_t));
+    FILE * p_file;
+    p_file = fopen(MYFILE, "w");
+    time_t rawtime = time(NULL);
+    struct tm * p_tm = localtime(&rawtime);
+
+    file_t * p_file_type = calloc(1, sizeof(file_t));
+    p_file_type->p_tm = p_tm;
+    p_file_type->file = p_file;
+    p_file_type->ip = ip;
+    p_file_type->port = PORT;
 
     server_t server = set_params
     (AF_INET, 0 , SOCK_STREAM, INADDR_ANY, PORT, backlog, server_addr, ip);
@@ -212,15 +225,28 @@ int main ()
 
     while (gb_run)
     {
+        rawtime = time(NULL);
         addr_size = sizeof(&client_addr);
         client_sock = accept(server.socket, (struct sockaddr *)&client_addr, &addr_size);
-        
+        p_file_type->type = "Connection";
+
         if (0 > client_sock)
         {
             continue;
         }
-
+        p_file_type->status = "Success";
         printf("[CONNECTED] New connection from %d\n", client_sock);
+
+        // snprintf(outbuffer, 100, "%s %s %s:%d %s", timestamp, type, ip, PORT, status);
+        p_tm = localtime(&rawtime);
+        snprintf(timestamp, 20, "%d%d%d %02d:%02d:%02d", 
+        (1900 + p_tm->tm_year), (p_tm->tm_mon + 1), p_tm->tm_mday, p_tm->tm_hour, p_tm->tm_min, p_tm->tm_sec);
+
+        // printf("Current time: %s\n", timestamp);
+        snprintf(outbuffer, sizeof(outbuffer), "%s %s %s:%d %s\n", timestamp,
+        p_file_type->type, p_file_type->ip, p_file_type->port, p_file_type->status);
+
+        fwrite(outbuffer, sizeof(char), strlen(outbuffer), p_file);
 
         if (!pp_fighters[0])
         {
@@ -239,17 +265,22 @@ int main ()
             client_socks[1] = client_sock;
         }
 
-        p_data = calloc(1, sizeof(fight_data_t));
+        // THIS WAS HERE FOR A REASON, I CAN'T REMEMBER WHY
+        // p_data = calloc(1, sizeof(fight_data_t));
 
         p_data->pp_fighter = pp_fighters;
         p_data->client_fds = client_socks;
+        p_data->p_file_struct = p_file_type;
 
         tpool_add_job(p_tpool, decide_winner, p_data, data_free);
 
         pp_fighters = calloc(2, sizeof(fighter_t *));
         client_socks = calloc(2, sizeof(int32_t));
+        memset(outbuffer, '\0', sizeof(outbuffer));
        
     }
+
+    fclose(p_file_type->file);
 
     if (pp_fighters[0])
     {
@@ -259,6 +290,8 @@ int main ()
     {
         FREE(pp_fighters[1]);
     }
+
+    FREE(p_file_type);
     FREE(pp_fighters);
     FREE(client_socks);
     FREE(p_data);

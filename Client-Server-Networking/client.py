@@ -1,6 +1,6 @@
 import socket
 
-IP = "127.0.0.1"
+IP = "10.30.143.25"
 PORT = 4433
 ADDR = (IP, PORT)
 SIZE = 1024

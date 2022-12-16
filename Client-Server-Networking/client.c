@@ -51,7 +51,6 @@ void luck_check(char * buffer, char * attack, char * dodge, char * luck_str)
         memset(buffer, '\0', sizeof(buffer));
         free(luck_str);
         input_val(buffer);
-        // exit(1);
     }
     else
     {
@@ -76,10 +75,6 @@ char * input_val(char * buffer)
     }
 
     int name_len = (strnlen(name_buff, 10) - 1);
-    char len_char = name_len + '0';
-    char * len_str = &len_char;
-
-    // printf("Namelen: %c \n", len_char);
 
     name_buff[name_len] = '\0';
 
@@ -113,16 +108,9 @@ char * input_val(char * buffer)
     {
         printf("All stats must add up to 100.\n");
         return NULL;
-        // return buffer;
     }
     snprintf(luck_buff, sizeof(luck_buff), "%d", luck_int);
 
-    // char * luck_str = calloc(3, sizeof(char));
-    // luck_check(buffer, atk_buff, dodge_buff, luck_str);
-    // snprintf(luck_buff, sizeof(luck_buff), "%s", luck_str);
-
-    // free(luck_str);
-    // printf("Luck_str: %s\n", luck_str);
     printf("Fighter luck stat: %s\n", luck_buff);
     luck_buff[2] = '\0';
 
@@ -133,14 +121,8 @@ char * input_val(char * buffer)
 
     memset(buffer, '\0', sizeof(buffer));
 
-    strncat(buffer, len_str, 1);
-    strncat(buffer, name_buff, name_len + 1);
-    strncat(buffer, atk_buff, 3);
-    strncat(buffer, dodge_buff, 3);
-    strncat(buffer, luck_buff, 3);
-
-    // free(luck_str);
-    // strncat(buffer, "\n", 1);
+    snprintf(buffer, (name_len + 11), "%d%s%s%s%s", 
+        name_len, name_buff, atk_buff, dodge_buff, luck_buff);
 
     // printf("Buffer: %s\n", buffer);
 
@@ -154,7 +136,7 @@ int main()
     socklen_t addr_size;
     char buffer[1024];
     char * p_buffer;
-    char * ip = "127.0.0.1";
+    char * ip = "10.30.143.25";
     int port = 4433;
     int bind_status, listen_status;
     int backlog = 5;

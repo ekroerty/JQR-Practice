@@ -12,6 +12,12 @@
 
 void decide_winner(void * p_data_void)
 {
+    char outbuffer[1024];
+    char timestamp[20];
+    char * type;
+    char * status;
+    time_t rawtime = time(NULL);
+
     fight_data_t * p_data = (fight_data_t *)p_data_void;
     fighter_t ** pp_fighters = p_data->pp_fighter;
     fighter_t * p_fighter1 = pp_fighters[0];
@@ -95,6 +101,14 @@ void decide_winner(void * p_data_void)
     char tie[4] = "TIE!";
     int32_t name_len;
 
+    snprintf(timestamp, 20, "%d%d%d %02d:%02d:%02d", 
+        (1900 + p_data->p_file_struct->p_tm->tm_year), 
+        (p_data->p_file_struct->p_tm->tm_mon + 1), 
+        p_data->p_file_struct->p_tm->tm_mday,
+         p_data->p_file_struct->p_tm->tm_hour, 
+         p_data->p_file_struct->p_tm->tm_min, 
+         p_data->p_file_struct->p_tm->tm_sec);
+
     memset(buffer, '\0', sizeof(buffer));
     if (!winner)
     {
@@ -110,9 +124,61 @@ void decide_winner(void * p_data_void)
 
     send(p_data->client_fds[0], buffer, name_len, 0);
     send(p_data->client_fds[1], buffer, name_len, 0);
-    close(p_data->client_fds[0]);
+    
+    if (0 > close(p_data->client_fds[0]))
+    {
+        p_data->p_file_struct->status = "Failure";
+    }
+    else
+    {
+        p_data->p_file_struct->status = "Success";
+    }
+    
+    rawtime = time(NULL);
+    p_data->p_file_struct->p_tm = localtime(&rawtime);
+    snprintf(timestamp, 20, "%d%d%d %02d:%02d:%02d", 
+        (1900 + p_data->p_file_struct->p_tm->tm_year), 
+        (p_data->p_file_struct->p_tm->tm_mon + 1), 
+        p_data->p_file_struct->p_tm->tm_mday,
+         p_data->p_file_struct->p_tm->tm_hour, 
+         p_data->p_file_struct->p_tm->tm_min, 
+         p_data->p_file_struct->p_tm->tm_sec);
+
+    p_data->p_file_struct->type = "Disconnection";
+    snprintf(outbuffer, sizeof(outbuffer), "%s %s %s:%d %s\n", timestamp,
+            p_data->p_file_struct->type, p_data->p_file_struct->ip,
+                p_data->p_file_struct->port, p_data->p_file_struct->status);
+
+    fwrite(outbuffer, sizeof(char), 
+            strlen(outbuffer), p_data->p_file_struct->file);
+
     printf("[DISCONNECTED] Connection from CLIENT %d closed.\n", p_data->client_fds[0]);
-    close(p_data->client_fds[1]);
+    if (0 > close(p_data->client_fds[1]))
+    {
+        p_data->p_file_struct->status = "Failure";
+    }
+    else
+    {
+        p_data->p_file_struct->status = "Success";
+    }
+
+    rawtime = time(NULL);
+    p_data->p_file_struct->p_tm = localtime(&rawtime);
+    snprintf(timestamp, 20, "%d%d%d %02d:%02d:%02d", 
+        (1900 + p_data->p_file_struct->p_tm->tm_year), 
+        (p_data->p_file_struct->p_tm->tm_mon + 1), 
+        p_data->p_file_struct->p_tm->tm_mday,
+         p_data->p_file_struct->p_tm->tm_hour, 
+         p_data->p_file_struct->p_tm->tm_min, 
+         p_data->p_file_struct->p_tm->tm_sec);
+
+    snprintf(outbuffer, sizeof(outbuffer), "%s %s %s:%d %s\n", timestamp,
+        p_data->p_file_struct->type, p_data->p_file_struct->ip,
+            p_data->p_file_struct->port, p_data->p_file_struct->status);
+
+    fwrite(outbuffer, sizeof(char),
+            strlen(outbuffer), p_data->p_file_struct->file);
+
     printf("[DISCONNECTED] Connection from CLIENT %d closed.\n\n", p_data->client_fds[1]);
 
 }
