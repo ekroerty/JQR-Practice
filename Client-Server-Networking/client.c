@@ -9,6 +9,8 @@
 
 #define N_FAILURE -1
 bool gb_var = true;
+char g_name_buff[100];
+
 
 char * input_val(char *);
 
@@ -60,23 +62,22 @@ void luck_check(char * buffer, char * attack, char * dodge, char * luck_str)
 }
 char * input_val(char * buffer)
 {
-    char name_buff[100];
     char atk_buff[4];
     char dodge_buff[4];
     char luck_buff[4];
-    memset(name_buff, '\0', sizeof(name_buff));
+    memset(g_name_buff, '\0', sizeof(g_name_buff));
     printf("Enter fighter name: ");
-    fgets(name_buff, sizeof(name_buff), stdin);
+    fgets(g_name_buff, sizeof(g_name_buff), stdin);
 
-    while (!name_check(name_buff))
+    while (!name_check(g_name_buff))
     {
         printf("Enter fighter name: ");
-        fgets(name_buff, sizeof(name_buff), stdin);
+        fgets(g_name_buff, sizeof(g_name_buff), stdin);
     }
 
-    int name_len = (strnlen(name_buff, 10) - 1);
+    int name_len = (strnlen(g_name_buff, 10) - 1);
 
-    name_buff[name_len] = '\0';
+    g_name_buff[name_len] = '\0';
 
     memset(atk_buff, '\0', sizeof(atk_buff));
     printf("Enter fighter attack stat: ");
@@ -115,14 +116,14 @@ char * input_val(char * buffer)
     luck_buff[2] = '\0';
 
 
-    // printf("Name: %s, name length: %s\n", name_buff, name_len);
+    // printf("Name: %s, name length: %s\n", g_name_buff, name_len);
     printf("Attack: %s | Dodge: %s | Luck: %s \n", atk_buff, dodge_buff, luck_buff);
     
 
     memset(buffer, '\0', sizeof(buffer));
 
     snprintf(buffer, (name_len + 11), "%d%s%s%s%s", 
-        name_len, name_buff, atk_buff, dodge_buff, luck_buff);
+        name_len, g_name_buff, atk_buff, dodge_buff, luck_buff);
 
     // printf("Buffer: %s\n", buffer);
 
@@ -136,13 +137,17 @@ int main()
     socklen_t addr_size;
     char buffer[1024];
     char * p_buffer;
-    char * ip = "10.30.143.25";
+    char * ip = "127.0.0.1";
     int port = 4433;
     int bind_status, listen_status;
     int backlog = 5;
-    char shutdown[8] = "Shutdown";
-    char rec[8] = "Received";
+    // char shutdown[8] = "Shutdown";
+    // char rec[8] = "Received";
     int sock_status, connect_status;
+    char * winner;
+    char * loser;
+    char tie[4] = "TIE!";
+    bool b_tie = false;
 
     sock_status = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -179,14 +184,52 @@ int main()
         p_buffer = input_val(buffer);
     }
 
-    // printf("Buffer 2: %s\n", buffer);
 
     send(sock_status, p_buffer, strlen(buffer), 0);
 
     memset(buffer, '\0', sizeof(buffer));
     recv(sock_status, buffer, sizeof(buffer), 0);
 
-    printf("The winner is %s!\n", buffer);
+    printf("Buffer: %s\n", buffer);
+
+    // client receives both names, the first is the winner
+
+    const char * delim = ",";
+    winner = strtok(buffer, delim);
+    loser = strtok(NULL, delim);
+
+    if (0 == strncmp(winner, tie, 4))
+    {
+        b_tie = true;
+        winner = loser;
+        loser = strtok(NULL, delim);
+    }
+
+    if (0 == strncmp(g_name_buff, winner, sizeof(*winner)))
+    {
+        printf("[MATCHUP] %s vs. %s\n", g_name_buff, loser);
+    }
+    else if (0 == strncmp(g_name_buff, loser, sizeof(*loser)))
+    {
+        printf("[MATCHUP] %s vs. %s\n", g_name_buff, winner);
+    }
+
+    if (b_tie)
+    {
+        if (0 == strncmp(g_name_buff, winner, sizeof(*winner)))
+        {
+            printf("[RESULTS] %s and %s TIED!\n", g_name_buff, loser);
+        }
+        else if (0 == strncmp(g_name_buff, loser, sizeof(*loser)))
+        {
+            printf("[RESULTS] %s and %s TIED!\n", g_name_buff, winner);
+        }
+        
+    }
+    else
+    {
+        printf("[RESULTS] The winner is %s!\n", winner);
+    }
 
     close(sock_status);
     printf("[DISCONNECTED] Disconnected from the server.\n");

@@ -1,6 +1,6 @@
 import socket
 
-IP = "10.30.143.25"
+IP = "127.0.0.1"
 PORT = 4433
 ADDR = (IP, PORT)
 SIZE = 1024
@@ -42,8 +42,9 @@ def main():
 
     except:
         print("Unable to connect to server. Exiting...")
+        return
 
-    recv_data = client.recv(SIZE).decode(FORMAT).strip()
+    recv_data = client.recv(SIZE).decode(FORMAT).strip("\n\0 ")
 
     if (recv_data == "Shutdown"):
         print("[SERVER] {}".format(recv_data))
@@ -57,27 +58,36 @@ def main():
         # Send data from the client, receive data, and immediately close
         send_data += "\n\0"
         client.send(send_data.encode(FORMAT))
-        recv = client.recv(SIZE).decode(FORMAT)
+        recv = (client.recv(SIZE).decode(FORMAT)).strip()
+        print(recv)
         if (recv[:4] == "TIE!"):
-            (tie, winner, loser) = recv.split()
-            if (name == winner):
-                print("[MATCHUP] {} vs. {}".format(name, loser))
-                print("[RESULTS] {} and {} TIED!".format(name, loser))
-            elif (name == loser):
-                print("[MATCHUP] {} vs. {}".format(name, winner))
-                print("[RESULTS] {} and {} TIED!".format(name, winner))
+            (tie, p1, p2) = recv.split(",")
+            p1 = p1.strip("\n\0 ")
+            p2 = p2.strip("\n\0 ")
+            if (name == p1):
+                print("[MATCHUP] {} vs. {}".format(name, p2))
+                print("[RESULTS] {} and {} TIED!".format(name, p2))
+            elif (name == p2):
+                print("[MATCHUP] {} vs. {}".format(name, p1))
+                print("[RESULTS] {} and {} TIED!".format(name, p1))
+            else:
+                print("[ERROR] Unable to determine winner.")
         else:
-            (winner, loser) = recv.split()
+            (winner, loser) = recv.split(",")
+            winner = winner.strip("\n\0 ")
+            loser = loser.strip("\n\0 ")
+            if (bool(recv)):
+                if (name == winner):
+                    print("[MATCHUP] {} vs. {}".format(name, loser))
+                    print("[RESULTS] The winner is {}!".format(winner))
+                elif (name == loser):
+                    print("[MATCHUP] {} vs. {}".format(name, winner))
+                    print("[RESULTS] The winner is {}!".format(winner))
+                else:
+                    print("[ERROR] Unable to determine winner.")
 
-        if (bool(recv)):
-            if (name == winner):
-                print("[MATCHUP] {} vs. {}".format(name, loser))
-            elif (name == loser):
-                print("[MATCHUP] {} vs. {}".format(name, winner))
-
-            print("[RESULTS] The winner is {}!".format(winner))
-        else:
-            print("Unable to enter battle.")
+            else:
+                print("Unable to enter battle.")
 
         
         client.close()

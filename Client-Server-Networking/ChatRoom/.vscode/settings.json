@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "*.c": "c",
+        "htable.h": "c",
+        "tpool.h": "c",
+        "packets.h": "c",
+        "pthread.h": "c",
+        "server.h": "c"
+    }
+}

@@ -13,7 +13,7 @@
 #include "./server.h"
 #include "./worker.h"
 
-#define MYFILE "log_file.txt"
+// #define MYFILE "log_file.txt"
 #define PORT 4433
 #define THREAD_COUNT 2
 #define N_FAILURE -1
@@ -28,7 +28,7 @@ void data_free(void * p_data_void)
     p_data->client_fds[0] = 0;
     p_data->client_fds[1] = 0;
     FREE(p_data->client_fds);
-    // FREE(p_data->p_file_struct);
+    // FREE(p_data->p_log_file_struct);
 }
 
 
@@ -192,35 +192,47 @@ int main (int argc, char ** argv)
     struct sockaddr_in server_addr, client_addr;
     socklen_t addr_size;
     int32_t client_sock;
-    char * ip = "10.30.143.25";
+    char * ip = "127.0.0.1";
     int backlog = 5;
     char buffer[1024];
     char outbuffer[1024];
+    char config_buff[100];
     char timestamp[20];
     char from_client[1024];
     char win_msg[1024];
+    char * log_file = argv[4];
+    char * config_file = argv[2];
     fighter_t ** pp_fighters = calloc(2, sizeof(fighter_t *));
     int32_t * client_socks = calloc(2, sizeof(int32_t));
     fight_data_t * p_data = calloc(1, sizeof(fight_data_t));
-    FILE * p_file;
-    p_file = fopen("log_file.txt", "w");
+    FILE * p_log_file = fopen(log_file, "w");;
+    FILE * p_config_file = fopen(config_file, "r");;
     time_t rawtime = time(NULL);
     struct tm * p_tm = localtime(&rawtime);
     struct timeval tv;
     tv.tv_sec = 60;
     tv.tv_usec = 0;
 
-    file_t * p_file_type = calloc(1, sizeof(file_t));
-    p_file_type->p_tm = p_tm;
-    p_file_type->file = p_file;
-    p_file_type->ip = ip;
-    p_file_type->port = PORT;
+    fread(config_buff, sizeof(char), sizeof(config_buff), p_config_file);
+
+    char * delim = ",";
+    char * port_str = strtok(config_buff, delim);
+
+    int port_num = strtol(port_str, (char **)NULL, 10);
+
+    fclose(p_config_file);
+
+    file_t * p_file = calloc(1, sizeof(file_t));
+    p_file->p_tm = p_tm;
+    p_file->file = p_log_file;
+    p_file->ip = ip;
+    p_file->port = port_num;
 
     server_t server = set_params
-    (AF_INET, 0 , SOCK_STREAM, INADDR_ANY, PORT, backlog, server_addr, ip);
+    (AF_INET, 0 , SOCK_STREAM, INADDR_ANY, port_num, backlog, server_addr, ip);
     
     printf("Press CTRL+C to shutdown server.\n");
-    printf("[LISTENING] Port %d...\n", PORT);
+    printf("[LISTENING] Port %d...\n", port_num);
     fcntl(server.socket, F_SETFL, O_NONBLOCK);
 
     tpool_t * p_tpool = tpool_create(THREAD_COUNT);
@@ -231,7 +243,7 @@ int main (int argc, char ** argv)
         rawtime = time(NULL);
         addr_size = sizeof(&client_addr);
         client_sock = accept(server.socket, (struct sockaddr *)&client_addr, &addr_size);
-        p_file_type->type = "Connection";
+        p_file->type = "Connection";
 
         if (0 > client_sock)
         {
@@ -239,18 +251,18 @@ int main (int argc, char ** argv)
         }
 
         p_tm = localtime(&rawtime);
-        snprintf(timestamp, 20, "%d%d%d %02d:%02d:%02d", 
+        snprintf(timestamp, 20, "%04d%02d%02d %02d:%02d:%02d", 
         (1900 + p_tm->tm_year), (p_tm->tm_mon + 1), p_tm->tm_mday, p_tm->tm_hour, p_tm->tm_min, p_tm->tm_sec);
-        p_file_type->status = "Success";
+        p_file->status = "Success";
         printf("[CONNECTED] New connection from %d\n", client_sock);
 
         // snprintf(outbuffer, 100, "%s %s %s:%d %s", timestamp, type, ip, PORT, status);
 
         // printf("Current time: %s\n", timestamp);
         snprintf(outbuffer, sizeof(outbuffer), "%s %s %s:%d %s\n", timestamp,
-        p_file_type->type, p_file_type->ip, p_file_type->port, p_file_type->status);
+        p_file->type, p_file->ip, p_file->port, p_file->status);
 
-        fwrite(outbuffer, sizeof(char), strlen(outbuffer), p_file);
+        fwrite(outbuffer, sizeof(char), strlen(outbuffer), p_log_file);
 
         if (!pp_fighters[0])
         {
@@ -279,7 +291,7 @@ int main (int argc, char ** argv)
 
         p_data->pp_fighter = pp_fighters;
         p_data->client_fds = client_socks;
-        p_data->p_file_struct = p_file_type;
+        p_data->p_file_struct = p_file;
 
         tpool_add_job(p_tpool, decide_winner, p_data, data_free);
 
@@ -289,7 +301,7 @@ int main (int argc, char ** argv)
        
     }
 
-    fclose(p_file_type->file);
+    fclose(p_file->file);
 
     if (pp_fighters[0])
     {
@@ -300,7 +312,7 @@ int main (int argc, char ** argv)
         FREE(pp_fighters[1]);
     }
 
-    FREE(p_file_type);
+    FREE(p_file);
     FREE(pp_fighters);
     FREE(client_socks);
     FREE(p_data);

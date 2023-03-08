@@ -17,6 +17,7 @@ void decide_winner(void * p_data_void)
     char * type;
     char * status;
     time_t rawtime = time(NULL);
+    bool b_tie = false;
 
     fight_data_t * p_data = (fight_data_t *)p_data_void;
     fighter_t ** pp_fighters = p_data->pp_fighter;
@@ -55,18 +56,26 @@ void decide_winner(void * p_data_void)
                 p_fighter2->health -= p_fighter1->attack;
             }
         }
+        else
+        {
+            printf("%s dodged %s's attack!\n", p_fighter2->name, p_fighter1->name);
+        }
 
         if (rand3 > p_fighter1->dodge) //fighter1 didn't dodge
         {
             if (rand4 <= p_fighter2->luck)
             {
-                printf("%s attack doubled!\n", p_fighter2->name);
+                printf("%s's attack doubled!\n", p_fighter2->name);
                 p_fighter1->health -= 2*p_fighter2->attack; //fighter2 attack doubles
             }
             else
             {
                 p_fighter1->health -= p_fighter2->attack;
             }
+        }
+        else
+        {
+            printf("%s dodged %s's attack!\n", p_fighter1->name, p_fighter2->name);
         }
 
         printf("%s's health: %d............%s's health: %d\n\n", 
@@ -75,6 +84,7 @@ void decide_winner(void * p_data_void)
 
     fighter_t * winner = NULL;
     fighter_t * loser = NULL;
+
     if (p_fighter1->health > p_fighter2->health)
     {
         winner = p_fighter1;
@@ -96,37 +106,33 @@ void decide_winner(void * p_data_void)
     }
     else
     {
-        winner = p_fighter1;
-        loser = p_fighter2;
-        printf("TIE!\n");
+        // winner = p_fighter1;
+        // loser = p_fighter2;
+        b_tie = true;
+        printf("TIE between %s and %s!\n", p_fighter1->name, p_fighter2->name);
     }
     printf("-----------------------------END FIGHT-----------------------------\n\n");
     
-    char buffer[1024];
-    char tie[4] = "TIE!";
+    char buffer[30];
+    const char * tie = "TIE!";
     int32_t name_len;
 
-    snprintf(timestamp, 20, "%d%d%d %02d:%02d:%02d", 
-        (1900 + p_data->p_file_struct->p_tm->tm_year), 
-        (p_data->p_file_struct->p_tm->tm_mon + 1), 
-        p_data->p_file_struct->p_tm->tm_mday,
-         p_data->p_file_struct->p_tm->tm_hour, 
-         p_data->p_file_struct->p_tm->tm_min, 
-         p_data->p_file_struct->p_tm->tm_sec);
-
     memset(buffer, '\0', sizeof(buffer));
-    if (!winner)
+
+    if (b_tie) //|| !b_tie)
     {
-        name_len = 4;
-        snprintf(buffer, name_len+1, "%s %s %s", tie, winner->name, loser->name);
+        // printf("name 1 length: %ld, name 2 length: %ld\n", strnlen(winner->name, 10) ,strnlen(loser->name, 10));
+        name_len = 4 + strnlen(p_fighter1->name, 10) + strnlen(p_fighter2->name, 10) + 3;
+        snprintf(buffer, name_len, "%s,%s,%s", tie, p_fighter1->name, p_fighter2->name);
+        // printf("Buffer to send: %s\n", buffer);
     }
     else
     {
-        name_len = strnlen(winner->name, 10) + strnlen(loser->name, 10) + 1;
-        snprintf(buffer, name_len + 1, "%s %s", winner->name, loser->name);
+        name_len = strnlen(winner->name, 10) + strnlen(loser->name, 10) + 2;
+        snprintf(buffer, name_len, "%s,%s", winner->name, loser->name);
     }
 
-    // printf("Buffer: %s\n", buffer);
+    printf("Buffer: %s\n", buffer);
     send(p_data->client_fds[0], buffer, name_len, 0);
     send(p_data->client_fds[1], buffer, name_len, 0);
     
@@ -141,7 +147,7 @@ void decide_winner(void * p_data_void)
     
     rawtime = time(NULL);
     p_data->p_file_struct->p_tm = localtime(&rawtime);
-    snprintf(timestamp, 20, "%d%d%d %02d:%02d:%02d", 
+    snprintf(timestamp, 20, "%04d%02d%02d %02d:%02d:%02d", 
         (1900 + p_data->p_file_struct->p_tm->tm_year), 
         (p_data->p_file_struct->p_tm->tm_mon + 1), 
         p_data->p_file_struct->p_tm->tm_mday,
@@ -155,7 +161,7 @@ void decide_winner(void * p_data_void)
                 p_data->p_file_struct->port, p_data->p_file_struct->status);
 
     fwrite(outbuffer, sizeof(char), 
-            strlen(outbuffer), p_data->p_file_struct->file);
+            strnlen(outbuffer, 1024), p_data->p_file_struct->file);
 
     printf("[DISCONNECTED] Connection from CLIENT %d closed.\n", p_data->client_fds[0]);
     if (0 > close(p_data->client_fds[1]))
@@ -169,7 +175,7 @@ void decide_winner(void * p_data_void)
 
     rawtime = time(NULL);
     p_data->p_file_struct->p_tm = localtime(&rawtime);
-    snprintf(timestamp, 20, "%d%d%d %02d:%02d:%02d", 
+    snprintf(timestamp, 20, "%04d%02d%02d %02d:%02d:%02d", 
         (1900 + p_data->p_file_struct->p_tm->tm_year), 
         (p_data->p_file_struct->p_tm->tm_mon + 1), 
         p_data->p_file_struct->p_tm->tm_mday,
@@ -177,12 +183,14 @@ void decide_winner(void * p_data_void)
          p_data->p_file_struct->p_tm->tm_min, 
          p_data->p_file_struct->p_tm->tm_sec);
 
+    // why does this have to happen twice?
+    p_data->p_file_struct->type = "Disconnection";
     snprintf(outbuffer, sizeof(outbuffer), "%s %s %s:%d %s\n", timestamp,
         p_data->p_file_struct->type, p_data->p_file_struct->ip,
             p_data->p_file_struct->port, p_data->p_file_struct->status);
 
     fwrite(outbuffer, sizeof(char),
-            strlen(outbuffer), p_data->p_file_struct->file);
+            strnlen(outbuffer, 1024), p_data->p_file_struct->file);
 
     printf("[DISCONNECTED] Connection from CLIENT %d closed.\n\n", p_data->client_fds[1]);
 
